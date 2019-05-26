@@ -1,0 +1,34 @@
+#This function plots the mesh for pluto mpi amr hdf5 data files. Any combination of levels can be plot.
+
+def plot_amr(path, file_number, levels):
+    with h5py.File('{}/data.{:04}.hdf5'.format(path, file_number)) as hdf:
+        for i in range(len(levels)):
+            level = levels[i]
+        
+            box = np.array(hdf.get('level_{}/boxes'.format(level)))
+            for i in box:
+                norm = 2**(-int(level)+3)
+                i0 = i[0]*norm
+                i1 = i[1]*norm
+                i2 = i[2]*norm
+                i3 = i[3]*norm
+
+                #properly fill in the grid
+                x = np.arange(i1,i3+2*norm,norm)
+                y = np.arange(i0,i2+2*norm,norm)
+                X,Y = np.meshgrid(y,x)
+
+                plt.plot(X,Y, 'black', linewidth=0.2)
+                plt.plot(X.T,Y.T, 'black', linewidth=0.2)
+    return
+    
+##### How to use it #####
+
+datfile = 15                        #plot the mesh for data file data.0015.hdf5
+path = 'path/to/data'               #path to the data
+level_arr = np.array([0,1,2,3])     #which refinement levels to plot, single values work too
+
+#Make the figure and call the function
+fig, ax1 = plt.subplots(figsize=(15, 15))
+plot_amr(path, datfile, level_arr)
+plt.tight_layout()
