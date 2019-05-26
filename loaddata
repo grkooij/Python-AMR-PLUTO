@@ -1,0 +1,55 @@
+#This function loads mpi amr hdf5 pluto datafiles and returns the requested data in 2d format for any level of refinement.
+
+import numpy as np
+import h5py
+import matplotlib.pyplot as plt
+
+def loadpluto_2d(path,file_number, levels, nativex, nativey, N_vars_total, requested_variables):
+    
+    with h5py.File('{}/data.{:04}.hdf5'.format(path, file_number)) as hdf:
+
+        data_arr = np.zeros((len(requested_variables),nativey,nativex),dtype='float64')
+        
+        for level in range(levels):
+            if level != 0:
+                data_arr = data_arr.repeat(2, axis = 1).repeat(2, axis = 2)
+                            
+            offsets = hdf['level_{}/data:offsets=0'.format(level)][:]
+            data = np.split(hdf['level_{}/data:datatype=0'.format(level)],offsets)
+            box = np.array(hdf.get('level_{}/boxes'.format(level)))                   
+            
+            for i in range(len(offsets)-1):
+                
+                splitdat = np.split(data[i+1],N_vars_total)         
+                current_box = box[i]
+                i0 = current_box[0]
+                i1 = current_box[1]
+                i2 = current_box[2]
+                i3 = current_box[3]
+                
+                for k in range(len(requested_variables)):       
+                    data_arr[k, i1:i3+1, i0:i2+1] = np.reshape(splitdat[requested_variables[k]], (i3+1-i1,i2+1-i0))            
+                           
+        return data_arr
+
+##### How to use it: #####
+N_vars = 5                      #Total number of variables in the pluto hdf5 file
+datfile = 15                    #The number of the datafile to load (in this case it loads data.0015.hdf5)
+levels = 4                      #The level of refinement (0,1,2,3 - so 4 total levels)
+nativex = 256                   #Native (level_0) number of grid cells in x
+nativey = 128                   #Native (level_0) number of grid cells in y
+path = 'path/to/data'           #Path to data files
+variables = np.array([0,3])     #Choose which variables to return (np.arange(N_vars) returns all variables)
+
+#Call function
+data = loadpluto_2d(path, datfile, levels, nativex, nativey, N_vars, variables)
+
+#Give names to data
+rho = data[0]
+prs = data[1]
+
+#Plot result with imshow
+fig, (ax1,ax2) = plt.subplots(1,2,figsize=(16, 16))
+ax1.imshow(np.log10(rho))
+ax2.imshow(np.log10(prs))
+plt.tight_layout()    
